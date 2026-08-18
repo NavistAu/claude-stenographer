@@ -1,0 +1,23 @@
+[package]
+name = "rrecall"
+version = "0.4.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+walkdir = "2"
+dirs = "6"
+xdg = "3"
+libc = "0.2"
+tantivy-query-grammar = "0.26"
+fastembed = { version = "5", default-features = false, features = ["ort-download-binaries-native-tls", "hf-hub-native-tls"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+strip = true

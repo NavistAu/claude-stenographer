@@ -1,0 +1,32 @@
+# tmux driver: runs interactive claude on the subscription plan (not API).
+# injection: plugin so the /stenographer skill + agent load for real.
+suite: stenographer
+model: sonnet
+judge_model: haiku
+runs_per_scenario: 3
+injection: plugin
+driver: tmux
+tmux_pane: skilleval
+timeout: 180
+
+scenarios:
+  - name: dispatches-to-agent
+    prompt: "/stenographer when did we decide on the database schema"
+    criteria:
+      - type: skill-invoked
+        value: stenographer
+      - type: llm-rubric
+        description: >
+          The response dispatches the stenographer subagent to perform the
+          history search (mentions spawning/dispatching the stenographer agent
+          or the Agent/Task tool), rather than the assistant searching
+          transcripts directly itself.
+
+  - name: asks-for-query-when-none-given
+    prompt: "/stenographer"
+    criteria:
+      - type: llm-rubric
+        description: >
+          With no query after the command, the assistant asks the user what
+          they would like to search for, rather than dispatching an agent with
+          an empty query.

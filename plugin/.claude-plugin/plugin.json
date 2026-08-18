@@ -1,0 +1,32 @@
+{
+  "name": "stenographer",
+  "version": "0.4.0",
+  "description": "Search past Claude Code conversation history — find decisions, context, and rationale from earlier sessions",
+  "author": {
+    "name": "Joshua Hogendorn"
+  },
+  "license": "MIT",
+  "keywords": ["claude-code", "claude-code-plugin", "claude", "rust", "search", "conversation-history", "memory"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/ensure-binary.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/reindex.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

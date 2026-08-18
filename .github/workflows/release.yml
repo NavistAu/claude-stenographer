@@ -1,0 +1,169 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Re-release an already-tagged version'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      rust-version: ${{ steps.rust-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read and validate VERSION
+        id: version
+        run: |
+          V=$(cat VERSION)
+          if ! [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "VERSION '$V' is not valid semver (X.Y.Z)"
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Read Rust toolchain version from mise.toml
+        id: rust-version
+        run: |
+          VERSION=$(grep -m1 '^rust' mise.toml | sed -E 's/rust *= *"([^"]+)"/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check three-way version consistency
+        run: |
+          V="${{ steps.version.outputs.version }}"
+          CARGO_V=$(grep -m1 '^version' Cargo.toml | sed -E 's/version *= *"([^"]+)"/\1/')
+          PLUGIN_V=$(python3 -c "import json;print(json.load(open('plugin/.claude-plugin/plugin.json'))['version'])")
+          [ "$V" = "$CARGO_V" ] && [ "$V" = "$PLUGIN_V" ] || { echo "version drift: VERSION=$V Cargo.toml=$CARGO_V plugin.json=$PLUGIN_V"; exit 1; }
+
+      - name: Check tag does not already exist
+        if: github.event.inputs.force != 'true'
+        run: |
+          git fetch --tags
+          if git rev-parse -q --verify "refs/tags/v${{ steps.version.outputs.version }}" >/dev/null; then
+            echo "Tag v${{ steps.version.outputs.version }} already exists (use workflow_dispatch with force=true to re-release)"
+            exit 1
+          fi
+
+      - name: Check CHANGELOG.md has an entry for this version
+        run: |
+          grep -qF "## [${{ steps.version.outputs.version }}]" CHANGELOG.md || {
+            echo "CHANGELOG.md is missing a '## [${{ steps.version.outputs.version }}]' entry"
+            exit 1
+          }
+
+  verify:
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ needs.gate.outputs.rust-version }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo test
+        run: cargo test
+
+  build:
+    needs: [gate, verify]
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ needs.gate.outputs.rust-version }}
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }} --manifest-path ./Cargo.toml
+
+      - name: Package binary
+        run: |
+          VERSION=${{ needs.gate.outputs.version }}
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/rrecall dist/
+          cd dist
+          tar czf "rrecall-v${VERSION}-${{ matrix.target }}.tar.gz" rrecall
+          shasum -a 256 "rrecall-v${VERSION}-${{ matrix.target }}.tar.gz" > "rrecall-v${VERSION}-${{ matrix.target }}.tar.gz.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rrecall-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+
+  publish:
+    needs: [gate, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create and push tag
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
+          FORCE: ${{ github.event.inputs.force }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "$FORCE" = "true" ]; then
+            git tag -f "v${VERSION}"
+            git push --force origin "v${VERSION}"
+          else
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+          fi
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.gate.outputs.version }}
+          generate_release_notes: true
+          files: dist/*

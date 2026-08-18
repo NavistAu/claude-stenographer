@@ -1,0 +1,28 @@
+suite: stenographer-agent
+skill_path: agents/stenographer.md
+model: haiku
+judge_model: haiku
+runs_per_scenario: 1
+
+scenarios:
+  - name: uses-rrecall-not-scripts
+    prompt: "Find conversations where we discussed the database schema migration"
+    criteria:
+      - type: llm-rubric
+        description: >
+          Response should indicate it will use rrecall to search, not write
+          scripts, use grep, jq, python, or manually read JSONL files. The
+          agent instructions explicitly forbid any approach other than rrecall.
+      - type: contains-any
+        values: ["rrecall", "search"]
+      - type: must-not-contain
+        values: ["python", "grep", "jq", "script"]
+
+  - name: respects-budget
+    prompt: "What did we decide about the authentication system last month?"
+    criteria:
+      - type: llm-rubric
+        description: >
+          Response should indicate awareness of the 5 Bash call budget.
+          Should plan to use 1-2 targeted searches rather than exhaustive
+          exploration. The agent has a STRICT budget of 5 calls.

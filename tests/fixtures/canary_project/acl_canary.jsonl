@@ -1,0 +1,8 @@
+{"type":"user","sessionId":"acl-canary","timestamp":"2026-05-18T18:00:00Z","message":{"role":"user","content":"jellyfin playback is failing again"},"uuid":"u1"}
+{"type":"assistant","sessionId":"acl-canary","timestamp":"2026-05-18T18:01:00Z","message":{"role":"assistant","content":[{"type":"text","text":"checking the media mount"}]},"uuid":"a1"}
+{"type":"user","sessionId":"acl-canary","timestamp":"2026-05-18T18:02:00Z","message":{"role":"user","content":"ok"},"uuid":"u2"}
+{"type":"assistant","sessionId":"acl-canary","timestamp":"2026-05-18T18:03:00Z","message":{"role":"assistant","content":[{"type":"text","text":"filler one"}]},"uuid":"a2"}
+{"type":"assistant","sessionId":"acl-canary","timestamp":"2026-05-18T18:04:00Z","message":{"role":"assistant","content":[{"type":"text","text":"filler two"}]},"uuid":"a3"}
+{"type":"assistant","sessionId":"acl-canary","timestamp":"2026-05-18T18:05:00Z","message":{"role":"assistant","content":[{"type":"text","text":"filler three"}]},"uuid":"a4"}
+{"type":"assistant","sessionId":"acl-canary","timestamp":"2026-05-18T18:06:00Z","message":{"role":"assistant","content":[{"type":"text","text":"filler four"}]},"uuid":"a5"}
+{"type":"assistant","sessionId":"acl-canary","timestamp":"2026-05-18T18:07:00Z","message":{"role":"assistant","content":[{"type":"text","text":"root cause: the imported file kept its intake permission acl and never inherited the destination directory ace on rename"}]},"uuid":"a6"}
