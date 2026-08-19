@@ -12,7 +12,7 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   # Pinned cargo-dist version. Keep in sync with dist-workspace.toml's
@@ -50,6 +50,12 @@ jobs:
           CARGO_V=$(grep -m1 '^version' Cargo.toml | sed -E 's/version *= *"([^"]+)"/\1/')
           PLUGIN_V=$(python3 -c "import json;print(json.load(open('plugin/.claude-plugin/plugin.json'))['version'])")
           [ "$V" = "$CARGO_V" ] && [ "$V" = "$PLUGIN_V" ] || { echo "version drift: VERSION=$V Cargo.toml=$CARGO_V plugin.json=$PLUGIN_V"; exit 1; }
+
+      - name: Check DIST_VERSION matches dist-workspace.toml
+        run: |
+          WORKFLOW_V="${{ env.DIST_VERSION }}"
+          CONFIG_V=$(grep -m1 '^cargo-dist-version' dist-workspace.toml | sed -E 's/cargo-dist-version *= *"([^"]+)"/\1/')
+          [ "$WORKFLOW_V" = "$CONFIG_V" ] || { echo "dist version drift: workflow DIST_VERSION=$WORKFLOW_V dist-workspace.toml cargo-dist-version=$CONFIG_V"; exit 1; }
 
       - name: Check tag does not already exist
         if: github.event.inputs.force != 'true'

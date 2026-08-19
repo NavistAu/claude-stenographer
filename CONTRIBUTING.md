@@ -10,6 +10,8 @@ Outside contributions are welcome. This document covers the branch model, how to
 
 If you don't have push access, fork the repo, branch from `develop` on your fork, and open your pull request back against this repo's `develop` branch.
 
+If the `publish` job fails after it has already pushed the release tag, every subsequent push to `main` fails the `gate` job's tag-exists check by design — that check refuses to silently re-release a version. Recover by re-running the Release workflow via `workflow_dispatch` with `force: true`, which re-tags (force) and upserts the release rather than requiring a version bump.
+
 ## Build and test
 
 ```sh
