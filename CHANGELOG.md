@@ -37,3 +37,7 @@ First public release.
   reach the caller's context. A `PreToolUse(Bash)` hook confines the agent to
   `rrecall` itself.
 - `text` (default, human-readable) and `json` (full structured) output formats.
+- `ensure-binary.sh`: installs `rrecall` from each release's own checksum-verified
+  installer script, floating to the highest available patch of `plugin.json`'s
+  major.minor (`git ls-remote --tags`, checked at most once/day) rather than
+  pinning the exact version, with an optional `gh attestation verify` tier.

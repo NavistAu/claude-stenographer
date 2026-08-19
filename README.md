@@ -139,7 +139,7 @@ Builds are incremental: a session whose transcript files all match the size/mtim
 
 | Hook | Script | Behavior |
 |------|--------|----------|
-| `SessionStart` | `plugin/hooks/ensure-binary.sh` | Downloads the `rrecall` binary matching `plugin.json`'s version if it's missing or out of date. |
+| `SessionStart` | `plugin/hooks/ensure-binary.sh` | Installs the `rrecall` binary via its per-release, checksum-verified installer if it's missing or out of date, floating to the highest available patch of `plugin.json`'s major.minor (checked at most once/day). |
 | `SessionEnd` | `plugin/hooks/reindex.sh` | Spawns a detached, incremental `rrecall index --all-projects` so the session just finished becomes searchable. |
 
 The stenographer agent additionally installs a `PreToolUse(Bash)` hook (`plugin/hooks/restrict-to-rrecall.sh`) that blocks any Bash command the agent runs which isn't `rrecall` itself (optionally piped through `jq`/`head`/`tail`/`sort`/`uniq`/`wc`) — it exists so a search miss produces a refined query, not a fallback to `grep`/`git`/`find` over the filesystem.
@@ -157,6 +157,7 @@ The stenographer agent additionally installs a `PreToolUse(Bash)` hook (`plugin/
 | `index build failed: <err>` | `index`, exit 1 | The build failed before completing (I/O or embedding error). |
 | `warning: checkpoint failed: <err>` | `index` | A periodic mid-build checkpoint save failed; the build keeps going (only resumability is at risk). |
 | `No matches. The scope ladder already reached the reported scope...` | `search` text output | Zero results at the scope reached; treat it as a query/ranking miss, not evidence the sessions don't exist. |
+| `ensure-binary: <what failed> — stenographer binary unavailable this session (will retry next session).` | `SessionStart` hook, stderr | The binary install/update failed (offline, download error, a mismatched installer signature, ...); session start still proceeds, and the next session retries. |
 
 ## Troubleshooting
 
