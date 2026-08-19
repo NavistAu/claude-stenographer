@@ -63,7 +63,7 @@ if command -v gh >/dev/null 2>&1; then
   # authenticated, ...) is inconclusive, not a tamper signal — proceed.
 fi
 
-if ! RRECALL_INSTALL_DIR="${DATA_DIR}/bin" RRECALL_NO_MODIFY_PATH=1 RRECALL_PRINT_QUIET=1 \
+if ! RRECALL_INSTALL_DIR="${DATA_DIR}" RRECALL_NO_MODIFY_PATH=1 RRECALL_PRINT_QUIET=1 \
     bash "$TMP"; then
   warn "rrecall-installer.sh v${RESOLVED} failed"
   exit 0
