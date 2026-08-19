@@ -204,3 +204,4 @@ See [SECURITY.md](SECURITY.md) to report a vulnerability.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
