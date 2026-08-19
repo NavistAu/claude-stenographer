@@ -139,7 +139,7 @@ Builds are incremental: a session whose transcript files all match the size/mtim
 
 | Hook | Script | Behavior |
 |------|--------|----------|
-| `SessionStart` | `plugin/hooks/ensure-binary.sh` | Installs the `rrecall` binary via its per-release, checksum-verified installer if it's missing or out of date, floating to the highest available patch of `plugin.json`'s major.minor (checked at most once/day). |
+| `SessionStart` | `plugin/hooks/ensure-binary.sh` | Installs the `rrecall` binary via its per-release, checksum-verified installer if it's missing or out of date, floating to the highest available patch of `plugin.json`'s major.minor (checked at most once/day); the checksum lives inside that TLS-fetched installer itself, so by default this catches corruption, not a compromised release — cryptographic provenance is only checked when `gh` is on `PATH` (`gh attestation verify`). |
 | `SessionEnd` | `plugin/hooks/reindex.sh` | Spawns a detached, incremental `rrecall index --all-projects` so the session just finished becomes searchable. |
 
 The stenographer agent additionally installs a `PreToolUse(Bash)` hook (`plugin/hooks/restrict-to-rrecall.sh`) that blocks any Bash command the agent runs which isn't `rrecall` itself (optionally piped through `jq`/`head`/`tail`/`sort`/`uniq`/`wc`) — it exists so a search miss produces a refined query, not a fallback to `grep`/`git`/`find` over the filesystem.

@@ -26,21 +26,33 @@ PLUGIN_VERSION=$(python3 -c "import json; print(json.load(open('${PLUGIN_ROOT}/.
 MAJOR_MINOR="${PLUGIN_VERSION%.*}"
 MAJOR_MINOR_RE=$(printf '%s' "$MAJOR_MINOR" | sed 's/\./\\./g')
 
+INSTALLED=""
+[ -f "$VERSION_FILE" ] && INSTALLED="$(cat "$VERSION_FILE")"
+
 RESOLVED="$PLUGIN_VERSION"
-if [ -x "$BIN" ] && [ -f "$VERSION_FILE" ] && [ -f "$LAST_CHECK" ] \
+if [ -x "$BIN" ] && [ -n "$INSTALLED" ] && [ -f "$LAST_CHECK" ] \
   && [ -n "$(find "$LAST_CHECK" -mtime -1 2>/dev/null)" ]; then
-  RESOLVED="$(cat "$VERSION_FILE")"
+  RESOLVED="$INSTALLED"
 else
   LATEST=$(GIT_TERMINAL_PROMPT=0 timeout 10 git ls-remote --tags \
       "https://github.com/${REPO}.git" "v${MAJOR_MINOR}.*" 2>/dev/null \
     | grep -v '\^{}' \
     | sed -n "s#.*refs/tags/\\(v${MAJOR_MINOR_RE}\\.[0-9][0-9]*\\)\$#\\1#p" \
     | sort -V | tail -1) || LATEST=""
-  [ -n "$LATEST" ] && RESOLVED="${LATEST#v}"
-  touch "$LAST_CHECK" 2>/dev/null || true
+  if [ -n "$LATEST" ]; then
+    RESOLVED="${LATEST#v}"
+  elif [ -n "$INSTALLED" ] && [ "${INSTALLED%.*}" = "$MAJOR_MINOR" ]; then
+    # Discovery failed (offline, timeout, ...): don't downgrade an already-
+    # floated patch, but a plugin.json bump within the same major.minor still
+    # wins if it's higher than what's installed.
+    RESOLVED="$(printf '%s\n%s\n' "$INSTALLED" "$PLUGIN_VERSION" | sort -V | tail -1)"
+  fi
 fi
 
-if [ -x "$BIN" ] && [ -f "$VERSION_FILE" ] && [ "$(cat "$VERSION_FILE")" = "$RESOLVED" ]; then
+if [ -x "$BIN" ] && [ "$INSTALLED" = "$RESOLVED" ]; then
+  # Confirmed installed (via discovery or the still-valid fallback above):
+  # only now is it safe to start the once/day throttle clock.
+  touch "$LAST_CHECK" 2>/dev/null || true
   exit 0
 fi
 
@@ -70,3 +82,4 @@ if ! RRECALL_INSTALL_DIR="${DATA_DIR}" RRECALL_NO_MODIFY_PATH=1 RRECALL_PRINT_QU
 fi
 
 echo "$RESOLVED" > "$VERSION_FILE"
+touch "$LAST_CHECK" 2>/dev/null || true
