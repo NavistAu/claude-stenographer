@@ -2,6 +2,7 @@
 name = "rrecall"
 version = "0.4.0"
 edition = "2021"
+repository = "https://github.com/navistau/claude-stenographer"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "env"] }
@@ -21,3 +22,8 @@ tempfile = "3"
 [profile.release]
 lto = true
 strip = true
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
