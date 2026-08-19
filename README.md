@@ -75,7 +75,7 @@ It's not a general-purpose transcript browser or a substitute for writing decisi
 ## Requirements
 
 - Claude Code, to install and run the plugin and its agent.
-- macOS or Linux. Prebuilt binaries cover darwin arm64/x64 and linux x64/arm64; there is no Windows build.
+- macOS (Apple Silicon) or Linux. Prebuilt binaries cover darwin arm64 and linux x64/arm64; there is no Windows build. Intel Macs are unsupported — upstream dropped prebuilt ONNX runtime binaries for `x86_64-apple-darwin`.
 - `ripgrep` (`rg`) is recommended but not required. `rrecall search` uses it to pre-filter candidate transcripts; if it's missing, `search` falls back to scanning every transcript directly, silently and correctly, just slower.
 - Building from source additionally requires the Rust toolchain (this repo pins `rust = "1.95"` in `mise.toml`).
 

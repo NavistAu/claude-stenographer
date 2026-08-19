@@ -14,6 +14,9 @@ query can and can't find.
 
 First public release.
 
+Supported platforms: darwin arm64, linux x64/arm64. No Intel-mac or Windows
+binaries.
+
 ### Added
 
 - `rrecall search`: lexical search over Claude Code transcripts using Lucene/
