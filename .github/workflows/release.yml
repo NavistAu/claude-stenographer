@@ -14,6 +14,11 @@ on:
 permissions:
   contents: write
 
+env:
+  # Pinned cargo-dist version. Keep in sync with dist-workspace.toml's
+  # cargo-dist-version.
+  DIST_VERSION: 0.32.0
+
 jobs:
   gate:
     runs-on: ubuntu-latest
@@ -114,37 +119,49 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
 
-      - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} --manifest-path ./Cargo.toml
+      - name: Install dist
+        shell: bash
+        run: "curl --proto '=https' --tlsv1.2 -LsSf \"https://github.com/axodotdev/cargo-dist/releases/download/v${DIST_VERSION}/cargo-dist-installer.sh\" | sh"
 
-      - name: Package binary
+      - name: Build local artifacts
         run: |
-          VERSION=${{ needs.gate.outputs.version }}
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/rrecall dist/
-          cd dist
-          tar czf "rrecall-v${VERSION}-${{ matrix.target }}.tar.gz" rrecall
-          shasum -a 256 "rrecall-v${VERSION}-${{ matrix.target }}.tar.gz" > "rrecall-v${VERSION}-${{ matrix.target }}.tar.gz.sha256"
+          dist build --tag=v${{ needs.gate.outputs.version }} --output-format=json --artifacts=local --target=${{ matrix.target }} > dist-manifest.json
+          cp dist-manifest.json target/distrib/${{ matrix.target }}-dist-manifest.json
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: rrecall-${{ matrix.target }}
           path: |
-            dist/*.tar.gz
-            dist/*.sha256
+            target/distrib/*.tar.xz
+            target/distrib/*.tar.xz.sha256
+            target/distrib/*-dist-manifest.json
 
   publish:
     needs: [gate, build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
+          path: target/distrib
           merge-multiple: true
+
+      - name: Install dist
+        shell: bash
+        run: "curl --proto '=https' --tlsv1.2 -LsSf \"https://github.com/axodotdev/cargo-dist/releases/download/v${DIST_VERSION}/cargo-dist-installer.sh\" | sh"
+
+      - name: Build global artifacts (installer.sh)
+        run: dist build --tag=v${{ needs.gate.outputs.version }} --output-format=json --artifacts=global > dist-manifest.json
+
+      - name: Remove internal dist manifests from release assets
+        run: rm -f target/distrib/*-dist-manifest.json
 
       - name: Create and push tag
         env:
@@ -161,9 +178,16 @@ jobs:
             git push origin "v${VERSION}"
           fi
 
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            target/distrib/*.tar.xz
+            target/distrib/rrecall-installer.sh
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.gate.outputs.version }}
           generate_release_notes: true
-          files: dist/*
+          files: target/distrib/*
